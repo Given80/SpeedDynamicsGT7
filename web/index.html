@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Speed Dynamics GT7</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#080808;color:#eee;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:1100px;margin:auto;padding:18px}
+.top{display:flex;justify-content:space-between;border-bottom:1px solid #333;padding-bottom:10px}
+.brand{color:#d7b45a;font-weight:900;font-size:clamp(20px,4vw,34px)}
+#status{font-weight:800;color:#888}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+.card{background:#151515;border:1px solid #2b2b2b;border-radius:14px;padding:12px;min-height:92px}
+.label{font-size:12px;color:#888;text-transform:uppercase}
+.value{font-size:clamp(25px,5vw,48px);font-weight:900}
+.unit,.note,.ref{font-size:12px;color:#888}
+.wide{grid-column:span 2}
+.bar{height:12px;background:#292929;border-radius:8px;overflow:hidden;margin-top:12px}
+.fill{height:100%;width:0;background:#d7b45a}
+.delta{font-size:clamp(28px,6vw,52px);font-weight:900;color:#aaa}
+.fast{color:#36a8ff}.slow{color:#ff4d5d}.equal{color:#aaa}
+@media(max-width:650px){.grid{grid-template-columns:repeat(2,1fr)}main{padding:10px}.wide{grid-column:span 2}}
+</style>
+</head>
+<body>
+<main>
+<div class="top">
+<div><div class="brand">SPEED DYNAMICS</div><div class="note">GT7 RACE ENGINEER</div></div>
+<div id="status">OFFLINE</div>
+</div>
+<div class="grid">
+<div class="card"><div class="label">Speed</div><div class="value" id="speed">0.0</div><div class="unit">km/h</div></div>
+<div class="card"><div class="label">Gear</div><div class="value" id="gear">–</div></div>
+<div class="card wide"><div class="label">RPM</div><div class="value" id="rpm">0</div></div>
+<div class="card"><div class="label">Throttle</div><div class="value" id="thr">0%</div><div class="bar"><div class="fill" id="thrb"></div></div></div>
+<div class="card"><div class="label">Brake</div><div class="value" id="brk">0%</div><div class="bar"><div class="fill" id="brkb"></div></div></div>
+<div class="card"><div class="label">Fuel</div><div class="value" id="fuel">0.0</div><div class="unit">Liter</div></div>
+<div class="card"><div class="label">Position</div><div class="value" id="pos">–</div></div>
+<div class="card"><div class="label">Lap</div><div class="value" id="lap">–</div></div>
+
+<div class="card wide">
+<div class="label">RUNDEN-DELTA</div>
+<div class="delta" id="delta">REFERENZ WIRD AUFGEZEICHNET</div>
+<div class="ref" id="ref">Erste vollständige Runde fahren – danach wird die schnellste Runde als Referenz verwendet.</div>
+</div>
+
+<div class="card"><div class="label">Aktuelle Runde</div><div class="value" id="cur">--:--.---</div></div>
+<div class="card"><div class="label">Best Lap</div><div class="value" id="best">--:--.---</div></div>
+<div class="card"><div class="label">Last Lap</div><div class="value" id="last">--:--.---</div></div>
+</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+function lap(ms){
+ if(ms===null||ms===undefined||ms<0)return"--:--.---";
+ let m=Math.floor(ms/60000),s=(ms%60000)/1000;
+ return m+":"+s.toFixed(3).padStart(6,"0");
+}
+async function tick(){
+ try{
+  const d=await fetch("/api",{cache:"no-store"}).then(r=>r.json());
+  $("status").textContent=d.connected?"LIVE":"SUCHE GT7";
+  $("status").style.color=d.connected?"#5bd67b":"#888";
+  $("speed").textContent=(d.speed||0).toFixed(1);
+  $("rpm").textContent=d.rpm||0;
+  $("gear").textContent=d.gear===0?"N":d.gear;
+  $("thr").textContent=(d.throttle||0)+"%";
+  $("brk").textContent=(d.brake||0)+"%";
+  $("thrb").style.width=(d.throttle||0)+"%";
+  $("brkb").style.width=(d.brake||0)+"%";
+  $("fuel").textContent=(d.fuel||0).toFixed(1);
+  $("pos").textContent=d.position?d.position+"/"+(d.cars||"?"):"–";
+  $("lap").textContent=d.lap?d.lap+"/"+(d.total_laps||"?"):"–";
+  $("cur").textContent=lap(d.current_lap_ms);
+  $("best").textContent=lap(d.best_lap_ms);
+  $("last").textContent=lap(d.last_lap_ms);
+
+  if(d.reference_ready && d.delta_ms!==null){
+    const v=d.delta_ms/1000;
+    const arrow=v<0?"▲":v>0?"▼":"";
+    $("delta").textContent=arrow+" "+(v>0?"+":"")+v.toFixed(3)+" s";
+    $("delta").className="delta "+(v<0?"fast":v>0?"slow":"equal");
+    $("ref").textContent="Referenz: "+lap(d.reference_ms);
+  }else{
+    $("delta").textContent="REFERENZ WIRD AUFGEZEICHNET";
+    $("delta").className="delta";
+    $("ref").textContent="Erste vollständige Runde fahren – danach wird die schnellste Runde als Referenz verwendet.";
+  }
+ }catch(e){$("status").textContent="BRIDGE OFFLINE";}
+}
+setInterval(tick,150);
+tick();
+</script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+Speed Dynamics GT7 V0.7 based directly on the known-working V0.5 architecture. Only Packet C request/decode and current-lap/delta fields are added; the V0.5 UDP socket, web server and common telemetry offsets are retained.
